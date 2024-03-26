@@ -1,9 +1,11 @@
 #!/bin/bash
 
-if [[ -f .env ]]; then
-    source .env
+ENV_PATH=/opt/monitor-me/.env
+
+if [[ -f $ENV_PATH ]]; then
+    source $ENV_PATH
 else
-    echo "Where is .env?"
+    echo "Where is env?"
     exit 1
 fi
 
