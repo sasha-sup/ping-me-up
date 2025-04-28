@@ -9,6 +9,9 @@ else
     exit 1
 fi
 
+# Get public IP address
+public_ip=$(curl -s -4 ifconfig.me)4
+
 # Percentage thresholds
 cpu_threshold=70
 ram_threshold=70
@@ -19,13 +22,11 @@ cpu_usage=$(top -b -n 1 | grep "Cpu(s)" | awk '{print $2}')
 ram_usage=$(free | grep Mem | awk '{print ($3 / $2) * 100}')
 disk_usage=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
 
-# Get public IP address
-public_ip=$(curl -4 ifconfig.me)
 
 # Shit happens
 top_cpu_process=$(ps -eo pid,cmd,comm,%cpu --sort=-%cpu | head -2)
 top_memory_process=$(ps -eo pid,cmd,comm,%mem --sort=-%mem | head -2)
-largest_file=$(find / -type f -exec du -h {} + 2>/dev/null | sort -rh | head -n 1)
+largest_file=$(find / -type f -exec du -h {} + 2>/dev/null | sort -rh | head -n 10)
 
 
 send_telegram_message() {
