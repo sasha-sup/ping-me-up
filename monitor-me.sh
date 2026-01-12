@@ -28,6 +28,7 @@ top_cpu_process=$(ps -eo pid,cmd,comm,%cpu --sort=-%cpu | head -2)
 top_memory_process=$(ps -eo pid,cmd,comm,%mem --sort=-%mem | head -2)
 largest_file=$(find / -type f -exec du -h {} + 2>/dev/null | sort -rh | head -n 10)
 
+0 0 * * 6 truncate -s 0 /var/lib/docker/containers/*/*.log
 
 send_telegram_message() {
     local message="$1"
