@@ -1,2 +1,4 @@
 .env
 *-venv
+AGENTS.md
+START_PROMPT.md

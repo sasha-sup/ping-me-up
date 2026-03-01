@@ -1,34 +1,81 @@
-# Host Availability with Telegram Notifications
+# ping-me-up
 
-This script monitors the availability of specified hosts and sends notifications to Telegram if a host becomes unavailable.
+Репозиторий содержит два bash-скрипта с уведомлениями в Telegram:
 
-## Instructions
+- `pinger.sh` — проверка доступности списка хостов по TCP-порту.
+- `monitor-me.sh` — мониторинг CPU/RAM/Disk с уведомлением при превышении порогов.
 
-### 1. Create a Telegram Bot
+## 1. Подготовка Telegram
 
-1. Start a chat with `@BotFather` on Telegram.
-2. Use the `/newbot` command to create a new bot.
-3. Follow the instructions to obtain your bot's token.
+1. Создайте бота через `@BotFather`.
+2. Добавьте бота в чат/группу/канал для уведомлений.
+3. Получите `CHAT_ID` целевого чата.
 
-### 2. Create a Telegram Group or Channel
+## 2. Конфигурация `.env`
 
-1. Create a group or channel on Telegram where availability notifications will be sent.
-2. Add the created bot to this group or channel.
+Создайте файл `.env` в корне репозитория:
 
-### 3. Configure the .env File
-
-```sh
-# Create a .env file in the same directory
-TOKEN="your_bot_token_here"
+```bash
+BOT_TOKEN="your_bot_token_here"
+# или TOKEN="your_bot_token_here"
 CHAT_ID="your_chat_id_here"
 
-# List of hosts to monitor 
-HOSTS=("example1.com 192.168.1.1" "example2.com 192.168.1.2" "example3.com 192.168.1.3")
+# Для pinger.sh
+HOSTS=(
+  "example1 192.168.1.1"
+  "example2 192.168.1.2"
+)
+
+# Для monitor-me.sh (опционально)
+CPU_THRESHOLD=85
+RAM_THRESHOLD=85
+DISK_THRESHOLD=90
+TELEGRAM_TIMEOUT=8
+MAX_MESSAGE_LENGTH=3500
+LARGEST_FILES_LIMIT=5
+DISK_SCAN_PATHS="/var /home /opt"
 ```
-### 4. Schedule the Script with Cron
-[crontab.guru](https://crontab.guru/examples.html)
+
+## 3. Запуск `pinger.sh`
+
+```bash
+./pinger.sh
+```
+
+Особенности:
+- Порт по умолчанию: `22` (переопределяется через `PORT`).
+- Таймаут проверки TCP: `CONNECT_TIMEOUT` (по умолчанию `2` сек).
+- В Telegram отправляются только события недоступности хоста.
+
+Пример с переменными окружения:
+
+```bash
+ENV_PATH=/path/to/.env PORT=443 CONNECT_TIMEOUT=1 ./pinger.sh
+```
+
+## 4. Запуск `monitor-me.sh`
+
+```bash
+ENV_PATH=/path/to/.env ./monitor-me.sh
+```
+
+Особенности:
+- По умолчанию `ENV_PATH=/opt/monitor-me/.env`.
+- Уведомление отправляется, только если хотя бы один порог превышен.
+- Скрипт рассчитан на Linux (`/proc/stat`).
+
+## 5. Cron
+
 ```bash
 crontab -e
-# Add a cron job to run the script at your desired interval
-0 * * * * /path/to/main.sh
+```
+
+Примеры:
+
+```cron
+# Проверка хостов каждые 5 минут
+*/5 * * * * cd /path/to/ping-me-up && ./pinger.sh
+
+# Мониторинг ресурсов каждую минуту
+* * * * * ENV_PATH=/path/to/ping-me-up/.env /path/to/ping-me-up/monitor-me.sh
 ```

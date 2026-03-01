@@ -4,9 +4,10 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 ENV_PATH="${ENV_PATH:-/opt/monitor-me/.env}"
+SCRIPT_NAME="${0##*/}"
 
 log_err() {
-    echo "[$(basename "$0")] $*" >&2
+    echo "[$SCRIPT_NAME] $*" >&2
 }
 
 require_command() {
@@ -15,6 +16,14 @@ require_command() {
         log_err "Missing required command: $cmd"
         exit 1
     fi
+}
+
+is_non_negative_number() {
+    [[ "${1:-}" =~ ^[0-9]+([.][0-9]+)?$ ]]
+}
+
+is_positive_int() {
+    [[ "${1:-}" =~ ^[1-9][0-9]*$ ]]
 }
 
 if [[ -f "$ENV_PATH" ]]; then
@@ -33,7 +42,7 @@ if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" ]]; then
     exit 1
 fi
 
-for cmd in awk curl free df ps find sort head; do
+for cmd in awk curl free df ps find sort head tr; do
     require_command "$cmd"
 done
 
@@ -46,6 +55,22 @@ TELEGRAM_TIMEOUT="${TELEGRAM_TIMEOUT:-8}"
 MAX_MESSAGE_LENGTH="${MAX_MESSAGE_LENGTH:-3500}"
 LARGEST_FILES_LIMIT="${LARGEST_FILES_LIMIT:-5}"
 DISK_SCAN_PATHS="${DISK_SCAN_PATHS:-/var /home /opt}"
+
+for threshold_name in cpu_threshold ram_threshold disk_threshold; do
+    threshold_value="${!threshold_name}"
+    if ! is_non_negative_number "$threshold_value"; then
+        log_err "$threshold_name must be a non-negative number"
+        exit 1
+    fi
+done
+
+for int_name in TELEGRAM_TIMEOUT MAX_MESSAGE_LENGTH LARGEST_FILES_LIMIT; do
+    int_value="${!int_name}"
+    if ! is_positive_int "$int_value"; then
+        log_err "$int_name must be a positive integer"
+        exit 1
+    fi
+done
 
 get_public_ip() {
     local ip
