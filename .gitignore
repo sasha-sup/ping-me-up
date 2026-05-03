@@ -1,4 +1,6 @@
 .env
 *-venv
-AGENTS.md
-START_PROMPT.md
+/target
+/config.toml
+.omc/
+.claude/

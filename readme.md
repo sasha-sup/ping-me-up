@@ -1,81 +1,129 @@
 # ping-me-up
 
-Репозиторий содержит два bash-скрипта с уведомлениями в Telegram:
+Быстрый Rust-инструмент мониторинга с уведомлениями в Telegram.
 
-- `pinger.sh` — проверка доступности списка хостов по TCP-порту.
-- `monitor-me.sh` — мониторинг CPU/RAM/Disk с уведомлением при превышении порогов.
+`pingmeup` — мониторинг CPU/RAM/Disk, уведомление при превышении порогов.
 
-## 1. Подготовка Telegram
+Заменяет старый `monitor-me.sh` (оставлен в репозитории для сравнения).
 
-1. Создайте бота через `@BotFather`.
-2. Добавьте бота в чат/группу/канал для уведомлений.
-3. Получите `CHAT_ID` целевого чата.
+## Зачем Rust
 
-## 2. Конфигурация `.env`
+| Метрика | Bash + curl/df/free/ps/find | Rust |
+|---|---|---|
+| Старт + работа | ~600 ms (форки утилит, sleep 1s) | ~10 ms + 500 ms CPU snapshot |
+| RAM при работе | 5-15 MB на цепочку процессов | < 2 MB |
+| Бинарь | — | ~2.3 MB stripped |
+| Зависимости в рантайме | bash, curl, awk, free, df, ps, find | только glibc |
 
-Создайте файл `.env` в корне репозитория:
+## Сборка
 
-```bash
-BOT_TOKEN="your_bot_token_here"
-# или TOKEN="your_bot_token_here"
-CHAT_ID="your_chat_id_here"
-
-# Для pinger.sh
-HOSTS=(
-  "example1 192.168.1.1"
-  "example2 192.168.1.2"
-)
-
-# Для monitor-me.sh (опционально)
-CPU_THRESHOLD=85
-RAM_THRESHOLD=85
-DISK_THRESHOLD=90
-TELEGRAM_TIMEOUT=8
-MAX_MESSAGE_LENGTH=3500
-LARGEST_FILES_LIMIT=5
-DISK_SCAN_PATHS="/var /home /opt"
-```
-
-## 3. Запуск `pinger.sh`
+Нужен Rust toolchain (>= 1.74). Установка: <https://rustup.rs>.
 
 ```bash
-./pinger.sh
+./build.sh
+# результат: target/release/pingmeup
 ```
 
-Особенности:
-- Порт по умолчанию: `22` (переопределяется через `PORT`).
-- Таймаут проверки TCP: `CONNECT_TIMEOUT` (по умолчанию `2` сек).
-- В Telegram отправляются только события недоступности хоста.
-
-Пример с переменными окружения:
+Опционально полностью статичный musl-бинарь:
 
 ```bash
-ENV_PATH=/path/to/.env PORT=443 CONNECT_TIMEOUT=1 ./pinger.sh
+sudo apt-get install musl-tools
+rustup target add x86_64-unknown-linux-musl
+./build.sh --musl
+# результат: target/x86_64-unknown-linux-musl/release/pingmeup
 ```
 
-## 4. Запуск `monitor-me.sh`
+## Конфиг
+
+`pingmeup` ищет конфиг в таком порядке:
+
+1. `$PINGMEUP_CONFIG` (переменная окружения).
+2. `./config.toml` (текущая директория).
+3. `/etc/pingmeup/config.toml`.
+
+Шаблон — `config.example.toml`.
+
+```toml
+[telegram]
+bot_token = "your_bot_token_here"
+chat_id = "your_chat_id_here"
+timeout_secs = 8
+
+[monitor]
+cpu_threshold = 85.0
+ram_threshold = 85.0
+disk_threshold = 90.0
+disk_scan_paths = ["/var", "/home", "/opt"]
+largest_files_limit = 5
+max_message_length = 3500
+top_processes = 3
+```
+
+Хранить с правами `chmod 600 config.toml` — содержит токен бота.
+
+## Запуск
 
 ```bash
-ENV_PATH=/path/to/.env ./monitor-me.sh
+pingmeup
+pingmeup --help
+pingmeup --version
 ```
 
-Особенности:
-- По умолчанию `ENV_PATH=/opt/monitor-me/.env`.
-- Уведомление отправляется, только если хотя бы один порог превышен.
-- Скрипт рассчитан на Linux (`/proc/stat`).
-
-## 5. Cron
+Override конфига:
 
 ```bash
-crontab -e
+PINGMEUP_CONFIG=/path/to/config.toml pingmeup
 ```
 
-Примеры:
+## Установка как системного сервиса
+
+```bash
+sudo install -Dm755 target/release/pingmeup /usr/local/bin/pingmeup
+sudo install -d /etc/pingmeup
+sudo install -m600 config.toml /etc/pingmeup/config.toml
+
+sudo install -m644 systemd/pingmeup-monitor.service /etc/systemd/system/
+sudo install -m644 systemd/pingmeup-monitor.timer   /etc/systemd/system/
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now pingmeup-monitor.timer
+
+systemctl list-timers | grep pingmeup
+journalctl -u pingmeup-monitor.service -f
+```
+
+Расписание по умолчанию: каждую минуту. Меняется в `pingmeup-monitor.timer`.
+
+## Альтернатива: cron
 
 ```cron
-# Проверка хостов каждые 5 минут
-*/5 * * * * cd /path/to/ping-me-up && ./pinger.sh
-
-# Мониторинг ресурсов каждую минуту
-* * * * * ENV_PATH=/path/to/ping-me-up/.env /path/to/ping-me-up/monitor-me.sh
+* * * * * PINGMEUP_CONFIG=/etc/pingmeup/config.toml /usr/local/bin/pingmeup
 ```
+
+## Что делает программа
+
+- CPU: две выборки `/proc/stat` с интервалом 500 ms.
+- RAM: `MemTotal` и `MemAvailable` из `/proc/meminfo`.
+- Disk: `statvfs("/")`.
+- Top processes: чтение `/proc/[pid]/stat`, расчёт %CPU/%MEM как у `ps`.
+- Largest files: рекурсивный обход `disk_scan_paths` с `-xdev`.
+- Сообщение в Telegram отправляется только если хотя бы один порог превышен.
+
+## Структура проекта
+
+```
+src/
+  main.rs        # entry, argv handling
+  config.rs      # TOML загрузка
+  telegram.rs    # HTTP-клиент к Bot API (ureq + rustls)
+  monitor.rs     # сборка отчёта по ресурсам
+  procfs.rs      # /proc + statvfs парсеры
+systemd/         # service + timer юниты
+build.sh         # обёртка над cargo build
+```
+
+## Telegram setup
+
+1. Создать бота через `@BotFather`.
+2. Добавить бота в чат/группу/канал.
+3. Получить `chat_id` целевого чата.

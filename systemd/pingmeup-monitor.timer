@@ -1,0 +1,12 @@
+[Unit]
+Description=Run pingmeup monitor every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Persistent=true
+Unit=pingmeup-monitor.service
+
+[Install]
+WantedBy=timers.target
