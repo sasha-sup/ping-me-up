@@ -21,14 +21,14 @@ fn cpu_snapshot() -> io::Result<(u64, u64)> {
     let line = s
         .lines()
         .next()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "empty /proc/stat"))?;
+        .ok_or_else(|| io::Error::other("empty /proc/stat"))?;
     let nums: Vec<u64> = line
         .split_whitespace()
         .skip(1)
         .filter_map(|t| t.parse::<u64>().ok())
         .collect();
     if nums.len() < 4 {
-        return Err(io::Error::new(io::ErrorKind::Other, "malformed /proc/stat"));
+        return Err(io::Error::other("malformed /proc/stat"));
     }
     let user = nums[0];
     let nice = nums[1];
@@ -80,8 +80,8 @@ pub fn disk_usage_percent(path: &str) -> io::Result<f64> {
         return Err(io::Error::last_os_error());
     }
     let sv = unsafe { sv.assume_init() };
-    let total = sv.f_blocks as u64;
-    let avail = sv.f_bavail as u64;
+    let total = sv.f_blocks;
+    let avail = sv.f_bavail;
     if total == 0 {
         return Ok(0.0);
     }

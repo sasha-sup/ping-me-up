@@ -1,0 +1,49 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            use_cross: false
+          - target: x86_64-unknown-linux-musl
+            use_cross: false
+          - target: aarch64-unknown-linux-gnu
+            use_cross: true
+          - target: aarch64-unknown-linux-musl
+            use_cross: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Install musl-tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: pingmeup
+          target: ${{ matrix.target }}
+          archive: pingmeup-$tag-$target
+          tar: unix
+          checksum: sha256
+          token: ${{ secrets.GITHUB_TOKEN }}
+          locked: true
+          use-cross: ${{ matrix.use_cross }}
+          features: ""
+          include: readme.md,config.example.toml,systemd

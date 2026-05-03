@@ -25,11 +25,7 @@ pub fn build_report(cfg: &Monitor) -> Report {
         let _ = writeln!(msg, "⚙️ CPU usage: {cpu:.1}%");
         if let Ok(top) = procfs::top_processes(true, cfg.top_processes) {
             for p in top {
-                let _ = writeln!(
-                    msg,
-                    "  {:>6} {:<16} {:>5.1}%",
-                    p.pid, p.comm, p.cpu_pct
-                );
+                let _ = writeln!(msg, "  {:>6} {:<16} {:>5.1}%", p.pid, p.comm, p.cpu_pct);
             }
         }
         msg.push('\n');
@@ -41,11 +37,7 @@ pub fn build_report(cfg: &Monitor) -> Report {
         let _ = writeln!(msg, "⚙️ RAM usage: {ram:.1}%");
         if let Ok(top) = procfs::top_processes(false, cfg.top_processes) {
             for p in top {
-                let _ = writeln!(
-                    msg,
-                    "  {:>6} {:<16} {:>5.1}%",
-                    p.pid, p.comm, p.mem_pct
-                );
+                let _ = writeln!(msg, "  {:>6} {:<16} {:>5.1}%", p.pid, p.comm, p.mem_pct);
             }
         }
         msg.push('\n');
@@ -103,7 +95,7 @@ fn collect_largest_files(paths: &[String], limit: usize) -> Vec<(u64, String)> {
             all.push((meta.len(), entry.path().display().to_string()));
         }
     }
-    all.sort_by(|a, b| b.0.cmp(&a.0));
+    all.sort_by_key(|item| std::cmp::Reverse(item.0));
     all.truncate(limit);
     all
 }

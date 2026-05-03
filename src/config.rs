@@ -75,8 +75,8 @@ fn default_top_n() -> usize {
 
 pub fn load() -> Result<Config, String> {
     let path = find_config()?;
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("read {}: {e}", path.display()))?;
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
     toml::from_str(&content).map_err(|e| format!("parse {}: {e}", path.display()))
 }
 
