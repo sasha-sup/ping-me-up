@@ -1,10 +1,10 @@
 [Unit]
-Description=Run pingmeup monitor every minute
+Description=Run pingmeup CPU/RAM/disk monitor periodically
 
 [Timer]
-OnBootSec=1min
-OnUnitActiveSec=1min
-AccuracySec=10s
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
 Persistent=true
 Unit=pingmeup-monitor.service
 

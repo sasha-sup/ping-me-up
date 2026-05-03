@@ -102,14 +102,14 @@ systemctl list-timers | grep pingmeup
 journalctl -u pingmeup-monitor.service -f
 ```
 
-Расписание по умолчанию: каждую минуту. Меняется в `systemd/pingmeup-monitor.timer`.
+Расписание по умолчанию: каждые 5 минут. Меняется в `systemd/pingmeup-monitor.timer`.
 
 Снять: `make systemd-uninstall`.
 
 ## Альтернатива: cron
 
 ```cron
-* * * * * PINGMEUP_CONFIG=/etc/pingmeup/config.toml /usr/local/bin/pingmeup
+*/5 * * * * PINGMEUP_CONFIG=/etc/pingmeup/config.toml /usr/local/bin/pingmeup
 ```
 
 ## Что делает программа
